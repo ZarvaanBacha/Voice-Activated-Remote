@@ -15,6 +15,8 @@ LED_PRESET = 22
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(LED_UP, GPIO.OUT)
 GPIO.setup(LED_DOWN, GPIO.OUT)
+GPIO.setup(LED_STOP, GPIO.OUT)
+GPIO.setup(LED_PRESET, GPIO.OUT)
 
 def on_activation1():
     print('Up Detected')
