@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/home/z25/Desktop/Voice-Activated-Remote/.venv"
+VIRTUAL_ENV="/home/z25/Voice-Activated-Remote/.venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

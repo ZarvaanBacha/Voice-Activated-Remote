@@ -1,4 +1,4 @@
-#!/home/z25/Desktop/Voice-Activated-Remote/.venv/bin/python3.7
+#!/home/z25/Voice-Activated-Remote/.venv/bin/python3.7
 
 # -*- coding: utf-8 -*-
 import re
