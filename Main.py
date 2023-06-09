@@ -30,15 +30,15 @@ def on_activation2():
 
 def on_activation3():
     print('Stop Detected')
-    GPIO.output(LED_DOWN, GPIO.HIGH)
+    GPIO.output(LED_STOP, GPIO.HIGH)
     time.sleep(1);
-    GPIO.output(LED_DOWN, GPIO.LOW)
+    GPIO.output(LED_STOP, GPIO.LOW)
 
 def on_activation4():
     print('Preset Detected')
-    GPIO.output(LED_DOWN, GPIO.HIGH)
+    GPIO.output(LED_PRESET, GPIO.HIGH)
     time.sleep(1);
-    GPIO.output(LED_DOWN, GPIO.LOW)
+    GPIO.output(LED_PRESET, GPIO.LOW)
 
 
 
