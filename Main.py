@@ -9,8 +9,8 @@ from precise_runner import PreciseEngine, PreciseRunner
 
 LED_UP = 17
 LED_DOWN = 27
-LED_STOP = 00
-LED_PRESET = 00
+LED_STOP = 10
+LED_PRESET = 22
 
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(LED_UP, GPIO.OUT)
