@@ -5,84 +5,146 @@ from os.path import dirname, abspath
 dir = dirname(dirname(abspath(__file__))) + "/Voice-Activated-Remote"
 import RPi.GPIO as GPIO
 import time
+import threading
 from precise_runner import PreciseEngine, PreciseRunner
 
-LED_UP = 17
-LED_DOWN = 27
-LED_STOP = 10
-LED_PRESET = 22
 
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(LED_UP, GPIO.OUT)
-GPIO.setup(LED_DOWN, GPIO.OUT)
-GPIO.setup(LED_STOP, GPIO.OUT)
-GPIO.setup(LED_PRESET, GPIO.OUT)
+# Stack to hold incoming commands
+command_stack = []
 
-def on_activation1():
-    print('Up Detected')
-    GPIO.output(LED_UP, GPIO.HIGH)
-    time.sleep(1);
-    GPIO.output(LED_UP, GPIO.LOW)
+# Relay Control Pins
+CHAIR_UP = 17 #M1 + 
+CHAIR_DOWN = 27 #M1 - 
+HEAD_UP = 10 #M2 + 
+HEAD_DOWN = 22 #M3 -
 
-def on_activation2():
-    print('Down Detected')
-    GPIO.output(LED_DOWN, GPIO.HIGH)
-    time.sleep(1);
-    GPIO.output(LED_DOWN, GPIO.LOW)
+OPERATING_TIME = 3 # Seconds for each operation
 
-def on_activation3():
-    print('Stop Detected')
-    GPIO.output(LED_STOP, GPIO.HIGH)
-    time.sleep(1);
-    GPIO.output(LED_STOP, GPIO.LOW)
-
-def on_activation4():
-    print('Preset Detected')
-    GPIO.output(LED_PRESET, GPIO.HIGH)
-    time.sleep(1);
-    GPIO.output(LED_PRESET, GPIO.LOW)
+STACK_LEN = 5 # Number of commands that can be stacked
 
 
+# Function to activate Motors
 
+# Supported Operations C-UP, Chair Up
+#                      C-DW, Chair Down
+#                      H-UP, Headrest Up
+#                      H-DW, Headrest Down
+
+def operation(operation, OPERATING_TIME):
+    pin = 00
+    match operation:
+        case "C-UP":
+            pin = CHAIR_UP
+            start_time = time.time()
+            while True:
+                GPIO.output(pin, GPIO.HIGH)
+                time.sleep(OPERATING_TIME)
+                GPIO.output(pin, GPIO.LOW)
+                time.sleep(OPERATING_TIME)
+
+        case "C-DW":
+            pin = CHAIR_DOWN
+            start_time = time.time()
+            while True:
+                GPIO.output(pin, GPIO.HIGH)
+                time.sleep(OPERATING_TIME)
+                GPIO.output(pin, GPIO.LOW)
+                time.sleep(OPERATING_TIME)
+
+        case "H-UP":
+            pin = HEAD_UP
+
+        case "H-DW":
+            pin = HEAD_DOWN   
+   
+    while True:
+        GPIO.output(pin, GPIO.HIGH)
+        time.sleep(OPERATING_TIME)
+        GPIO.output(pin, GPIO.LOW)
+        time.sleep(OPERATING_TIME)
+
+def kill_all_pins():
+    GPIO.output(CHAIR_UP, GPIO.LOW)
+    GPIO.output(CHAIR_DOWN, GPIO.LOW)
+    GPIO.output(HEAD_UP, GPIO.LOW)
+    GPIO.output(HEAD_DOWN, GPIO.LOW)
+
+
+# Function to add commands to stack 
+def add_to_stack(operation, OPERATING_TIME):
+
+    #Only allows 5 commands to be stacked
+    if command_stack.len() >= STACK_LEN:
+        return
+    thread = threading.Thread(target=operation, args=(operation, OPERATING_TIME))
+    command_stack.append(thread)
+
+# Function to remove completed threads from stack
+def remove_completed_threads():
+    while True:
+        for thread in command_stack:
+            if not thread.is_alive():
+                command_stack.remove(thread)
+        time.sleep(1)  # Adjust the sleep duration as needed
+
+
+# Function to stop operation 
+def stop():
+    kill_all_pins()
+    for thread in command_stack:
+        thread.stop()
+    command_stack.clear()
+
+# Function to track chair position
+def track_position():
+    global chair_position
+    start_time = time.time()
+    while True:
+        elapsed_time = time.time() - start_time
+        if command_stack:  # Check if command_stack is not empty
+            if command_stack[-1].is_alive():  # Check if the last command thread is still running
+                if command_stack[-1].operation == "C-UP":
+                    chair_position = int(elapsed_time)  # Track chair position in seconds
+                elif command_stack[-1].operation == "C-DW":
+                    chair_position = max(0, chair_position - int(elapsed_time))  # Subtract elapsed_time from position, but ensure it doesn't go below 0
+        time.sleep(1)  # Update position every second
+
+
+
+
+# Engines and Runners for Recognition
 
 engine1 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Up/Up.pb')
-runner1 = PreciseRunner(engine1, on_activation=on_activation1)
+runner1 = PreciseRunner(engine1, on_activation=add_to_stack("C-UP", OPERATING_TIME))
 runner1.start()
 
 engine2 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Down/Down.pb')
-runner2 = PreciseRunner(engine2, on_activation=on_activation2)
+runner2 = PreciseRunner(engine2, on_activation=add_to_stack("C-DW", OPERATING_TIME))
 runner2.start()
 
 
-engine3 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Stop/Stop.pb')
-runner3 = PreciseRunner(engine3, on_activation=on_activation3)
-runner3.start()
-
-
 engine4 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Headrest Up/Headrest-Up.pb')
-runner4 = PreciseRunner(engine4, on_activation=on_activation4)
+runner4 = PreciseRunner(engine4, on_activation=add_to_stack("H-UP", OPERATING_TIME))
 runner4.start()
 
 
 engine5 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Headrest Down/Headrest-Down.pb')
-runner5 = PreciseRunner(engine5, on_activation=on_activation4)
+runner5 = PreciseRunner(engine5, on_activation=add_to_stack("H-DW", OPERATING_TIME))
 runner5.start()
 
-engine6 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Sit/Sit.pb')
-runner6 = PreciseRunner(engine6, on_activation=on_activation4)
-runner6.start()
+engine3 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Stop/Stop.pb')
+runner3 = PreciseRunner(engine3, on_activation=stop())
+runner3.start()
 
-engine7 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/TV/TV.pb')
-runner7 = PreciseRunner(engine7, on_activation=on_activation4)
-runner7.start()
 
-engine8 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Sleep/Sleep.pb')
-runner8 = PreciseRunner(engine8, on_activation=on_activation4)
-runner8.start()
+# Start Thread to clear completed threads
+remove_threads_thread = threading.Thread(target=remove_completed_threads)
+remove_threads_thread.start()
 
-engine9 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Stand/Stand.pb')
-runner9 = PreciseRunner(engine9, on_activation=on_activation4)
-runner9.start()
+# Start Thread to track chair position
+position_thread = threading.Thread(target=track_position)
+position_thread.start()
+
 
 # Sleep forever
 from time import sleep
