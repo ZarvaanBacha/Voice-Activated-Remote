@@ -90,6 +90,7 @@ def add_to_stack(operation, OPERATING_TIME):
         return
     thread = threading.Thread(target=operation, args=(operation, OPERATING_TIME))
     command_stack.append(thread)
+    thread.start()
 
 
 # Function to remove completed threads from stack
@@ -127,29 +128,33 @@ def track_position():
 
 
 
+# Wrapper function for add_to_stack with arguments
+def add_to_stack_wrapper(operation, operating_time):
+    add_to_stack(operation, operating_time)
+
 # Engines and Runners for Recognition
 
 engine1 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Up/Up.pb')
-runner1 = PreciseRunner(engine1, on_activation=add_to_stack("C-UP", OPERATING_TIME))
+runner1 = PreciseRunner(engine1, on_activation=lambda: add_to_stack_wrapper("C-UP", OPERATING_TIME))
 runner1.start()
 
 engine2 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Down/Down.pb')
-runner2 = PreciseRunner(engine2, on_activation=add_to_stack("C-DW", OPERATING_TIME))
+runner2 = PreciseRunner(engine2, on_activation=lambda: add_to_stack_wrapper("C-DW", OPERATING_TIME))
 runner2.start()
 
-
 engine4 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Headrest Up/Headrest-Up.pb')
-runner4 = PreciseRunner(engine4, on_activation=add_to_stack("H-UP", OPERATING_TIME))
+runner4 = PreciseRunner(engine4, on_activation=lambda: add_to_stack_wrapper("H-UP", OPERATING_TIME))
 runner4.start()
 
-
 engine5 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Headrest Down/Headrest-Down.pb')
-runner5 = PreciseRunner(engine5, on_activation=add_to_stack("H-DW", OPERATING_TIME))
+runner5 = PreciseRunner(engine5, on_activation=lambda: add_to_stack_wrapper("H-DW", OPERATING_TIME))
 runner5.start()
 
 engine3 = PreciseEngine(dir + '/precise-engine/precise-engine', dir + '/Models/Stop/Stop.pb')
-runner3 = PreciseRunner(engine3, on_activation=stop())
+runner3 = PreciseRunner(engine3, on_activation=stop)
 runner3.start()
+
+
 
 
 # Start Thread to clear completed threads
