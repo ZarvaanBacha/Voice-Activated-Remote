@@ -8,10 +8,6 @@ import time
 import threading
 from precise_runner import PreciseEngine, PreciseRunner
 
-
-# Stack to hold incoming commands
-command_stack = []
-
 # Relay Control Pins
 CHAIR_UP = 17 #M1 + 
 CHAIR_DOWN = 27 #M1 - 
@@ -21,6 +17,20 @@ HEAD_DOWN = 22 #M3 -
 OPERATING_TIME = 3 # Seconds for each operation
 
 STACK_LEN = 5 # Number of commands that can be stacked
+
+# Set GPIO Numbering Mode
+GPIO.setmode(GPIO.BCM)
+
+# Set up GPIO pins as outputs
+GPIO.setup(CHAIR_UP, GPIO.OUT)
+GPIO.setup(CHAIR_DOWN, GPIO.OUT)
+GPIO.setup(HEAD_UP, GPIO.OUT)
+GPIO.setup(HEAD_DOWN, GPIO.OUT)
+
+# Stack to hold incoming commands
+command_stack = []
+
+
 
 
 # Function to activate Motors
@@ -32,31 +42,34 @@ STACK_LEN = 5 # Number of commands that can be stacked
 
 def operation(operation, OPERATING_TIME):
     pin = 00
-    match operation:
-        case "C-UP":
-            pin = CHAIR_UP
-            start_time = time.time()
-            while True:
-                GPIO.output(pin, GPIO.HIGH)
-                time.sleep(OPERATING_TIME)
-                GPIO.output(pin, GPIO.LOW)
-                time.sleep(OPERATING_TIME)
+    thread = threading.current_thread()  # Get the current thread
+    thread.stop_flag = False  # Initialize the stop flag
+    if operation == "C-UP":
+        pin = CHAIR_UP
+        start_time = time.time()
+        while not thread.stop_flag:  # Check the stop flag to stop the loop
+            print("C-UP")
+            GPIO.output(pin, GPIO.HIGH)
+            time.sleep(OPERATING_TIME)
+            GPIO.output(pin, GPIO.LOW)
+            time.sleep(OPERATING_TIME)
 
-        case "C-DW":
-            pin = CHAIR_DOWN
-            start_time = time.time()
-            while True:
-                GPIO.output(pin, GPIO.HIGH)
-                time.sleep(OPERATING_TIME)
-                GPIO.output(pin, GPIO.LOW)
-                time.sleep(OPERATING_TIME)
+    elif operation == "C-DW":
+        pin = CHAIR_DOWN
+        start_time = time.time()
+        while not thread.stop_flag:
+            print("C-DW")
+            GPIO.output(pin, GPIO.HIGH)
+            time.sleep(OPERATING_TIME)
+            GPIO.output(pin, GPIO.LOW)
+            time.sleep(OPERATING_TIME)
 
-        case "H-UP":
-            pin = HEAD_UP
+    elif operation == "H-UP":
+        pin = HEAD_UP
 
-        case "H-DW":
-            pin = HEAD_DOWN   
-   
+    elif operation == "H-DW":
+        pin = HEAD_DOWN   
+
     while True:
         GPIO.output(pin, GPIO.HIGH)
         time.sleep(OPERATING_TIME)
@@ -72,12 +85,12 @@ def kill_all_pins():
 
 # Function to add commands to stack 
 def add_to_stack(operation, OPERATING_TIME):
-
-    #Only allows 5 commands to be stacked
-    if command_stack.len() >= STACK_LEN:
+    # Only allows 5 commands to be stacked
+    if len(command_stack) >= STACK_LEN:
         return
     thread = threading.Thread(target=operation, args=(operation, OPERATING_TIME))
     command_stack.append(thread)
+
 
 # Function to remove completed threads from stack
 def remove_completed_threads():
@@ -92,8 +105,10 @@ def remove_completed_threads():
 def stop():
     kill_all_pins()
     for thread in command_stack:
-        thread.stop()
+        thread.stop_flag = True  # Set the stop flag in the thread
     command_stack.clear()
+
+
 
 # Function to track chair position
 def track_position():
